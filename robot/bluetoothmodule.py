@@ -3,6 +3,7 @@ import threading
 import json
 import time
 import globalvariable
+import pickle
 
 
 hostMACAddress = '24:71:89:4E:2B:F6'
@@ -30,19 +31,16 @@ def start_bluetooth():
         try:
             while True:
                 data = self.socket.recv(1024)
-                if len(data) == 0:
-                    break
-                
-                if client_info[0] == clientMACAddress:
-                    self.message = data
-                else:
+                if len(data) != 0:
                     str_data = data.decode('utf-8')
                     self.message = str_data
-
-                globalvariable.bt_server_message = self.message
-                if self.message_to_send is not None:
+                    print(self.message)
+                    if client_info[0] == clientMACAddress:
+                        globalvariable.bt_server_message.put(self.message)
+                print("q:",globalvariable.bt_move_message.qsize())
+                if not globalvariable.bt_move_message.empty():
                     print("sending")
-                    self.socket.send(self.message_to_send)
+                    self.socket.send(pickle.dumps(globalvariable.bt_move_message.get()))
                     self.message_to_send = None
         except IOError:
             pass
@@ -60,9 +58,7 @@ def start_bluetooth():
             if client_info[0] == clientMACAddress:
                 print("client_client")
                 client_client = ConnectedClient(client_socket, client_info)
-                print(client_client.message)
                 client_client.setDaemon(True)
-                print(client_client.message)
                 client_client.start()
 
             elif client_info[0] == arduinoMACAddress:
@@ -70,11 +66,11 @@ def start_bluetooth():
                 arduino_client = ConnectedClient(client_socket, client_info)
                 arduino_client.setDaemon(True)
                 arduino_client.start()
-        #arduino_client.message_to_send = "test"
+
         print(client_client.message)
-        globalvariable.bt_arduino_message = "lalala"  #waiting ardiuno
-        
-        print("receive:"+globalvariable.bt_arduino_message)
+        globalvariable.bt_arduino_message.put("lalal") #waiting ardiuno
+
+        #print("receive:"+globalvariable.bt_arduino_message)
         time.sleep(1)
  server_socket.close()
 
