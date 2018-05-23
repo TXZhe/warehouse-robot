@@ -18,6 +18,13 @@ server_socket.listen(1)
 client_client = None
 arduino_client = None
 
+def btsend(socket):
+    while(1):
+        #print("q:",globalvariable.bt_move_message.qsize())
+        if not globalvariable.bt_move_message.empty():
+            print("sending")
+			socket.send(pickle.dumps(globalvariable.bt_move_message.get()))
+
 def start_bluetooth():
  class ConnectedClient(threading.Thread):
     def __init__(self, socket, client_info):
@@ -26,10 +33,17 @@ def start_bluetooth():
         self.client_info = client_info
         self.message = None
         self.message_to_send = None
+        self.sendopen = False
 
     def run(self):
         try:
-            while True:
+            while True:      
+                if(not self.sendopen):
+                  tmp = threading.Thread(target=btsend,args=(self.socket,))
+                  tmp.setDaemon(True)
+                  tmp.start()
+                  self.sendopen = True
+            
                 data = self.socket.recv(1024)
                 if len(data) != 0:
                     str_data = data.decode('utf-8')
@@ -37,15 +51,12 @@ def start_bluetooth():
                     print(self.message)
                     if client_info[0] == clientMACAddress:
                         globalvariable.bt_server_message.put(self.message)
-                print("q:",globalvariable.bt_move_message.qsize())
-                if not globalvariable.bt_move_message.empty():
-                    print("sending")
-                    self.socket.send(pickle.dumps(globalvariable.bt_move_message.get()))
-                    self.message_to_send = None
+
         except IOError:
             pass
         self.socket.close()
         print(self.client_info, ": disconnected")
+	
 
 
  while True:
